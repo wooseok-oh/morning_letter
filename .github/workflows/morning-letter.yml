@@ -1,0 +1,54 @@
+name: Morning Letter
+
+on:
+  schedule:
+    # 21:47 UTC = 06:47 KST. 매일(주말 포함) 아침 7시 전후에 도착하도록 잡습니다.
+    # 정시는 GitHub 예약 실행이 밀리기 쉬워 47분을 사용합니다.
+    - cron: "47 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send-morning-letter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Validate mail secrets
+        env:
+          NAVER_MAIL_USERNAME: ${{ secrets.NAVER_MAIL_USERNAME }}
+          NAVER_MAIL_PASSWORD: ${{ secrets.NAVER_MAIL_PASSWORD }}
+        run: |
+          if [ -z "$NAVER_MAIL_USERNAME" ] || [ -z "$NAVER_MAIL_PASSWORD" ]; then
+            echo "::error::GitHub Secrets에 NAVER_MAIL_USERNAME, NAVER_MAIL_PASSWORD를 설정하세요."
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          ./gradlew bootJar -x test --no-daemon
+
+      - name: Send morning letter
+        env:
+          SPRING_PROFILES_ACTIVE: actions
+          NAVER_MAIL_USERNAME: ${{ secrets.NAVER_MAIL_USERNAME }}
+          NAVER_MAIL_PASSWORD: ${{ secrets.NAVER_MAIL_PASSWORD }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LETTER_RECIPIENT: ${{ secrets.LETTER_RECIPIENT }}
+        run: java -jar build/libs/*-SNAPSHOT.jar --spring.profiles.active=actions

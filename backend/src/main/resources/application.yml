@@ -1,0 +1,37 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: morning-letter
+  mail:
+    host: smtp.naver.com
+    port: 465
+    username: ${NAVER_MAIL_USERNAME:}
+    password: ${NAVER_MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+      mail.smtp.ssl.trust: smtp.naver.com
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+
+letter:
+  enabled: true
+  oneshot: false
+  schedule-enabled: false
+  recipient: ${LETTER_RECIPIENT:ohws6373@naver.com,thdud2720@naver.com,jka5513@naver.com,eogod147@naver.com}
+  schedule: "0 0 7 * * *"
+  timezone: Asia/Seoul
+  subject-prefix: 하루의 힘
+  ai:
+    enabled: true
+    api-key: ${GROQ_API_KEY:${OPENAI_API_KEY:}}
+    base-url: ${AI_BASE_URL:https://api.groq.com/openai}
+    model: ${AI_MODEL:llama-3.3-70b-versatile}
+    timeout-seconds: 60
+
+logging:
+  level:
+    com.morningletter: INFO
