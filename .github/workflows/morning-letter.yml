@@ -2,9 +2,9 @@ name: Morning Letter
 
 on:
   schedule:
-    # 21:47 UTC = 06:47 KST. 매일(주말 포함) 아침 7시 전후에 도착하도록 잡습니다.
-    # 정시는 GitHub 예약 실행이 밀리기 쉬워 47분을 사용합니다.
-    - cron: "47 21 * * *"
+    # 19:45 UTC = 04:45 KST. 빌드를 먼저 끝내 두고, 아래 대기 단계에서 05:00 KST가 되면 보냅니다.
+    # GitHub 예약 실행은 늦게 시작될 수 있어(실측 2시간 이상) 일찍 걸어 둡니다.
+    - cron: "45 19 * * *"
   workflow_dispatch:
 
 permissions:
@@ -43,6 +43,17 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew bootJar -x test --no-daemon
+
+      - name: Wait until 05:00 KST
+        if: github.event_name == 'schedule'
+        run: |
+          now=$(TZ=Asia/Seoul date +%s)
+          target=$(TZ=Asia/Seoul date -d "today 05:00" +%s)
+          wait=$((target - now))
+          if [ "$wait" -gt 0 ] && [ "$wait" -le 1800 ]; then
+            echo "05:00 KST까지 ${wait}초 대기"
+            sleep "$wait"
+          fi
 
       - name: Send morning letter
         env:

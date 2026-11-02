@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailAuthenticationException;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
@@ -53,6 +54,10 @@ public class LetterMailService {
             );
         }
 
+        String username = mailUsername.trim();
+        String password = mailPassword.replaceAll("\\s+", "");
+        applyCredentials(username, password);
+
         String[] recipients = letterProperties.safeRecipients();
         if (recipients.length == 0) {
             throw new IllegalStateException("수신 메일 주소가 설정되지 않았습니다.");
@@ -66,7 +71,7 @@ public class LetterMailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(mailUsername);
+            helper.setFrom(username);
             helper.setTo(recipients);
             helper.setSubject(subject);
             helper.setText(plainText, html);
@@ -75,9 +80,9 @@ public class LetterMailService {
             return letter;
         } catch (MailAuthenticationException ex) {
             throw new IllegalStateException(
-                    "메일 서버 인증에 실패했습니다. 네이버 앱 비밀번호가 만료·변경되었을 수 있습니다. "
-                            + "네이버 ID > 보안설정 > 2단계 인증 > 애플리케이션 비밀번호 관리에서 재발급한 뒤 "
-                            + "NAVER_MAIL_PASSWORD를 갱신하세요. "
+                    "메일 서버 인증에 실패했습니다. GitHub Secret NAVER_MAIL_USERNAME, NAVER_MAIL_PASSWORD가 "
+                            + "네이버 앱 비밀번호와 다릅니다. 비밀번호 길이=" + password.length()
+                            + ". start-dev.ps1의 값과 같게 다시 저장하세요. "
                             + "(원본: " + ex.getMessage() + ")",
                     ex
             );
@@ -89,5 +94,12 @@ public class LetterMailService {
     public boolean isMailConfigured() {
         return mailUsername != null && !mailUsername.isBlank()
                 && mailPassword != null && !mailPassword.isBlank();
+    }
+
+    private void applyCredentials(String username, String password) {
+        if (mailSender instanceof JavaMailSenderImpl impl) {
+            impl.setUsername(username);
+            impl.setPassword(password);
+        }
     }
 }

@@ -17,11 +17,11 @@ public record LetterProperties(
 ) {
 
     private static final String DEFAULT_RECIPIENTS =
-            "ohws6373@naver.com,thdud2720@naver.com,jka5513@naver.com,eogod147@naver.com";
+            "ohws6373@naver.com,thdud2720@naver.com,jka5513@naver.com,eogod147@naver.com,itg11@naver.com";
 
     public LetterProperties {
         if (ai == null) {
-            ai = new Ai(true, "", "https://api.groq.com/openai", "llama-3.3-70b-versatile", 60);
+            ai = new Ai(true, "", "https://api.groq.com/openai", "openai/gpt-oss-120b", 60);
         }
     }
 
@@ -34,7 +34,7 @@ public record LetterProperties(
     }
 
     public String safeSchedule() {
-        return schedule != null && !schedule.isBlank() ? schedule : "0 0 7 * * *";
+        return schedule != null && !schedule.isBlank() ? schedule : "0 0 5 * * *";
     }
 
     public String safeTimezone() {
@@ -61,7 +61,7 @@ public record LetterProperties(
         }
 
         public String safeModel() {
-            return model != null && !model.isBlank() ? model : "llama-3.3-70b-versatile";
+            return model != null && !model.isBlank() ? model : "openai/gpt-oss-120b";
         }
 
         public int safeTimeoutSeconds() {

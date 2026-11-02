@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -25,7 +26,7 @@ public class GroqLetterWriter implements LetterEnhancer {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.KOREAN);
     private static final String SYSTEM_PROMPT = """
-            당신은 아침 7시에 도착하는 짧은 한국어 편지를 씁니다.
+            당신은 새벽 5시에 도착해 아침에 읽히는 짧은 한국어 편지를 씁니다.
             독자는 특별한 성공을 꿈꾸기보다, 오늘 하루를 살아가는 어른입니다.
 
             규칙:
@@ -88,24 +89,37 @@ public class GroqLetterWriter implements LetterEnhancer {
                 seed.translationNote()
         );
 
-        Map<String, Object> body = Map.of(
-                "model", ai.safeModel(),
-                "temperature", 0.7,
-                "response_format", Map.of("type", "json_object"),
-                "messages", List.of(
-                        Map.of("role", "system", "content", SYSTEM_PROMPT),
-                        Map.of("role", "user", "content", userPrompt)
-                )
-        );
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("model", ai.safeModel());
+        body.put("temperature", 0.4);
+        body.put("max_tokens", 2048);
+        body.put("reasoning_effort", "low");
+        body.put("response_format", Map.of("type", "json_object"));
+        body.put("messages", List.of(
+                Map.of("role", "system", "content", SYSTEM_PROMPT),
+                Map.of("role", "user", "content", userPrompt)
+        ));
 
-        String raw = webClient.post()
-                .uri(ai.safeBaseUrl().replaceAll("/$", "") + "/v1/chat/completions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .headers(headers -> headers.setBearerAuth(ai.apiKey().trim()))
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(String.class)
-                .block(Duration.ofSeconds(ai.safeTimeoutSeconds()));
+        String raw;
+        try {
+            raw = webClient.post()
+                    .uri(ai.safeBaseUrl().replaceAll("/$", "") + "/v1/chat/completions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(headers -> headers.setBearerAuth(ai.apiKey().trim()))
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(Duration.ofSeconds(ai.safeTimeoutSeconds()));
+        } catch (WebClientResponseException ex) {
+            String responseBody = ex.getResponseBodyAsString();
+            if (responseBody != null && responseBody.length() > 300) {
+                responseBody = responseBody.substring(0, 300);
+            }
+            throw new IllegalStateException(
+                    ex.getStatusCode().value() + " " + ex.getStatusText() + " " + responseBody,
+                    ex
+            );
+        }
 
         JsonNode root = readTree(raw);
         JsonNode content = root.path("choices").path(0).path("message").path("content");

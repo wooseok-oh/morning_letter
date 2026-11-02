@@ -22,7 +22,7 @@ public class LetterScheduler {
         this.letterProperties = letterProperties;
     }
 
-    @Scheduled(cron = "${letter.schedule:0 0 7 * * *}", zone = "${letter.timezone:Asia/Seoul}")
+    @Scheduled(cron = "${letter.schedule:0 0 5 * * *}", zone = "${letter.timezone:Asia/Seoul}")
     public void send() {
         if (!letterProperties.enabled()) {
             log.info("아침 편지가 비활성화되어 스케줄을 건너뜁니다.");
