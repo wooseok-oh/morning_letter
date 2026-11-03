@@ -1,14 +1,16 @@
 name: Morning Letter
 
 on:
-  schedule:
-    # 19:45 UTC = 04:45 KST. 빌드를 먼저 끝내 두고, 아래 대기 단계에서 05:00 KST가 되면 보냅니다.
-    # GitHub 예약 실행은 늦게 시작될 수 있어(실측 2시간 이상) 일찍 걸어 둡니다.
-    - cron: "45 19 * * *"
+  # 정시 발송은 외부 예약 서비스(cron-job.org)가 매일 04:55 KST에 workflow_dispatch로 실행합니다.
+  # GitHub 예약 실행은 이 저장소에서 매일 3~6시간 늦게 시작되어 정시 발송에 쓸 수 없습니다.
   workflow_dispatch:
+  schedule:
+    # 예비용. 외부 예약이 실패한 날에만 늦게라도 보냅니다. 20:30 UTC = 05:30 KST.
+    - cron: "30 20 * * *"
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   send-morning-letter:
@@ -19,10 +21,30 @@ jobs:
         working-directory: backend
 
     steps:
+      - name: Skip if already sent today
+        id: guard
+        if: github.event_name == 'schedule'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d "$(TZ=Asia/Seoul date +%F) 00:00 +0900" +%Y-%m-%dT%H:%M:%SZ)
+          count=$(curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/morning-letter.yml/runs?status=success&created=%3E%3D${since}&per_page=1" \
+            | jq '.total_count')
+          if [ "${count:-0}" -gt 0 ]; then
+            echo "오늘(KST) 이미 발송한 실행이 있어 예비 실행을 건너뜁니다."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Set up Java 21
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -30,6 +52,7 @@ jobs:
           cache: gradle
 
       - name: Validate mail secrets
+        if: steps.guard.outputs.skip != 'true'
         env:
           NAVER_MAIL_USERNAME: ${{ secrets.NAVER_MAIL_USERNAME }}
           NAVER_MAIL_PASSWORD: ${{ secrets.NAVER_MAIL_PASSWORD }}
@@ -40,12 +63,13 @@ jobs:
           fi
 
       - name: Build
+        if: steps.guard.outputs.skip != 'true'
         run: |
           chmod +x gradlew
           ./gradlew bootJar -x test --no-daemon
 
       - name: Wait until 05:00 KST
-        if: github.event_name == 'schedule'
+        if: steps.guard.outputs.skip != 'true'
         run: |
           now=$(TZ=Asia/Seoul date +%s)
           target=$(TZ=Asia/Seoul date -d "today 05:00" +%s)
@@ -56,6 +80,7 @@ jobs:
           fi
 
       - name: Send morning letter
+        if: steps.guard.outputs.skip != 'true'
         env:
           SPRING_PROFILES_ACTIVE: actions
           NAVER_MAIL_USERNAME: ${{ secrets.NAVER_MAIL_USERNAME }}

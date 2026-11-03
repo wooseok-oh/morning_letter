@@ -22,7 +22,17 @@ https://github.com/wooseok-oh/stock_advisor
 
 ## 발송
 
-GitHub Actions `Morning Letter`가 매일 04:45 KST에 시작해 빌드를 마친 뒤, 05:00 KST가 되면 보냅니다. 주말에도 보냅니다. GitHub 예약 실행이 늦게 시작되면 그만큼 늦게 도착할 수 있습니다.
+매일 04:55 KST에 [cron-job.org](https://cron-job.org)가 GitHub API로 `Morning Letter` 워크플로를 실행합니다. 워크플로는 빌드를 마친 뒤 05:00 KST까지 기다렸다가 보냅니다. 주말에도 보냅니다.
+
+GitHub 자체 예약 실행은 이 저장소에서 매일 3~6시간 늦게 시작되어 정시 발송에 쓰지 않습니다. 대신 예비용으로 남겨 두었고, 그날(KST) 이미 성공한 실행이 있으면 아무것도 하지 않습니다. 외부 예약이 실패한 날에만 늦게라도 한 통이 나갑니다.
+
+cron-job.org 작업 설정:
+
+- URL: `https://api.github.com/repos/wooseok-oh/morning_letter/actions/workflows/morning-letter.yml/dispatches`
+- Method: `POST`, Body: `{"ref":"main"}`
+- Headers: `Authorization: Bearer <토큰>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `Content-Type: application/json`
+- 일정: 매일 04:55, 시간대 `Asia/Seoul`
+- 토큰: GitHub fine-grained token, 저장소 `morning_letter`만, 권한 `Actions: Read and write`. 만료되면 발송이 멈추니 만료일 전에 새로 발급해 바꿔 주세요.
 
 저장소 Secrets:
 
