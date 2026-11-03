@@ -22,17 +22,11 @@ https://github.com/wooseok-oh/stock_advisor
 
 ## 발송
 
-매일 04:55 KST에 [cron-job.org](https://cron-job.org)가 GitHub API로 `Morning Letter` 워크플로를 실행합니다. 워크플로는 빌드를 마친 뒤 05:00 KST까지 기다렸다가 보냅니다. 주말에도 보냅니다.
+GitHub Actions `Morning Letter`가 보냅니다. 주말에도 보냅니다.
 
-GitHub 자체 예약 실행은 이 저장소에서 매일 3~6시간 늦게 시작되어 정시 발송에 쓰지 않습니다. 대신 예비용으로 남겨 두었고, 그날(KST) 이미 성공한 실행이 있으면 아무것도 하지 않습니다. 외부 예약이 실패한 날에만 늦게라도 한 통이 나갑니다.
+GitHub 예약 실행은 이 저장소에서 몇 시간씩 늦게 시작됩니다. 그래서 23:30~04:30 KST에 한 시간마다 예약해 두고, 먼저 시작된 실행이 05:00 KST까지 기다렸다가 보냅니다. 뒤에 시작된 실행은 그날 이미 보냈으면 건너뜁니다. 모든 실행이 05:00을 넘겨 시작된 날에는 처음 시작된 실행이 바로 보내고, 06:00 KST 예약이 예비로 한 번 더 있습니다.
 
-cron-job.org 작업 설정:
-
-- URL: `https://api.github.com/repos/wooseok-oh/morning_letter/actions/workflows/morning-letter.yml/dispatches`
-- Method: `POST`, Body: `{"ref":"main"}`
-- Headers: `Authorization: Bearer <토큰>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `Content-Type: application/json`
-- 일정: 매일 04:55, 시간대 `Asia/Seoul`
-- 토큰: GitHub fine-grained token, 저장소 `morning_letter`만, 권한 `Actions: Read and write`. 만료되면 발송이 멈추니 만료일 전에 새로 발급해 바꿔 주세요.
+GitHub가 예약 실행을 보장하지는 않기 때문에, 밤사이 실행이 전혀 시작되지 않은 날에는 늦게 도착할 수 있습니다. Actions 탭에서 `Run workflow`로 수동 실행하면 기다리지 않고 바로 보냅니다.
 
 저장소 Secrets:
 
